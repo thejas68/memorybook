@@ -36,7 +36,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '10mb' }));
+// Pages are text-only for now; 200kb is plenty. Raise it per-route when image uploads arrive.
+app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 const authLimiter = rateLimit({

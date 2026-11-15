@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../config/db';
 import { AuthRequest } from '../../middleware/auth';
 import { z } from 'zod';
+import { sendValidationError } from '../../utils/validate';
 
 const reactionSchema = z.object({
   pageId: z.string().uuid(),
@@ -18,7 +19,7 @@ export const addReaction = async (req: Request, res: Response): Promise<void> =>
   const parsed = reactionSchema.safeParse(body);
 
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten().fieldErrors });
+    sendValidationError(res, parsed.error);
     return;
   }
 

@@ -3,6 +3,8 @@ import { verifyToken } from '../utils/jwt';
 
 export interface AuthRequest extends Request {
   userId?: string;
+  // Set by requireRole() on book-scoped routes so controllers don't re-query membership.
+  memberRole?: string;
 }
 
 export const requireAuth = (

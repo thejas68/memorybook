@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from '../contexts/AuthContext';
 import { booksApi, pagesApi, reactionsApi } from '../lib/api';
 
+type Reaction = { id: string; userId: string; emoji: string };
+
 const EMOJIS = ['❤️', '😍', '🥹', '✨', '🔥', '👏'];
 
 const MemoryBookView = () => {
@@ -80,18 +82,40 @@ const MemoryBookView = () => {
     }
   };
 
+  // Click once to react, click again to take your reaction back.
   const handleReaction = async (pageId: string, emoji: string) => {
+    const page = pages.find((p) => p.id === pageId);
+    const mine = page?.reactions?.find(
+      (r: Reaction) => r.emoji === emoji && r.userId === user?.id
+    );
     try {
-      const reaction = await reactionsApi.add(pageId, emoji);
-      setPages((prev) =>
-        prev.map((p) =>
-          p.id === pageId
-            ? { ...p, reactions: [...(p.reactions || []), reaction] }
-            : p
-        )
-      );
+      if (mine) {
+        await reactionsApi.remove(mine.id);
+        setPages((prev) =>
+          prev.map((p) =>
+            p.id === pageId
+              ? { ...p, reactions: (p.reactions || []).filter((r: Reaction) => r.id !== mine.id) }
+              : p
+          )
+        );
+      } else {
+        const reaction = await reactionsApi.add(pageId, emoji);
+        setPages((prev) =>
+          prev.map((p) =>
+            p.id === pageId
+              ? {
+                  ...p,
+                  reactions: [
+                    ...(p.reactions || []).filter((r: Reaction) => r.id !== reaction.id),
+                    reaction,
+                  ],
+                }
+              : p
+          )
+        );
+      }
     } catch {
-      // Already reacted — ignore
+      // Network/permission hiccup — leave the UI as it was
     }
   };
 
@@ -299,11 +323,12 @@ const MemoryBookView = () => {
                     {new Date(page.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                {/* Delete — only author can delete */}
-                {page.authorId === user?.id && (
+                {/* Delete — the page's author, or the book's owner */}
+                {(page.authorId === user?.id || isOwner) && (
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Delete page"
                     onClick={() => handleDeletePage(page.id)}
                     className="text-muted-foreground hover:text-destructive"
                   >
@@ -326,12 +351,19 @@ const MemoryBookView = () => {
                     const count = page.reactions?.filter(
                       (r: any) => r.emoji === emoji
                     ).length || 0;
+                    const mine = !!page.reactions?.some(
+                      (r: Reaction) => r.emoji === emoji && r.userId === user?.id
+                    );
                     return (
                       <button
                         key={emoji}
                         onClick={() => handleReaction(page.id, emoji)}
+                        aria-pressed={mine}
+                        aria-label={`React with ${emoji}`}
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border transition-all ${
-                          count > 0
+                          mine
+                            ? 'border-primary bg-primary/20'
+                            : count > 0
                             ? 'border-primary/40 bg-primary/10'
                             : 'border-border hover:border-primary/30 hover:bg-primary/5'
                         }`}
