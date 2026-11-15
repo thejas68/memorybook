@@ -11,16 +11,15 @@ import reactionRoutes from './modules/reactions/reactions.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(helmet());
 
 // ✅ CORS — allows local dev + Vercel production
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:8080',
-  'http://localhost:3000',
-  'https://memorybook-frontend.vercel.app'        // set in Render env vars
-].filter(Boolean) as string[];
+  'http://localhost:5173', 'http://localhost:8080', 'http://localhost:3000',
+  ...(process.env.CORS_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+];
 
 app.use(cors({
   origin: (origin, callback) => {
